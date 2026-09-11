@@ -1,0 +1,27 @@
+modLoader = "javafml"
+loaderVersion = "*"
+license = "MIT"
+
+[[mods]]
+modId = "${id}"
+version = "${version}"
+displayName = "${name}"
+authors = "Sxilverr, SuperFluke, booleanbyte"
+credits = "Original Worley's Caves by SuperFluke and booleanbyte"
+description = "Cave generation with Worley noise"
+logoFile = "icon.png"
+
+
+[[dependencies.${id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neoforge_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft}"
+ordering = "NONE"
+side = "BOTH"

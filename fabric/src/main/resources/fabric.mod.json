@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "Cave generation with Worley noise",
+  "authors": ["Sxilverr", "SuperFluke", "booleanbyte"],
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.sxilverr.worleycaves.fabric.WorleyCavesFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": "${minecraft}"
+  }
+}

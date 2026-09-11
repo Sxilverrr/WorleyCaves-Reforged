@@ -1,0 +1,5 @@
+{
+  "type": "worleycaves:worley_caves",
+  "biomes": "#minecraft:is_overworld",
+  "carver": "worleycaves:worley_cave"
+}
