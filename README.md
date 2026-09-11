@@ -43,5 +43,4 @@ Cave *shape* is unchanged. The noise sampling and interpolation are exactly the 
 ## Credits
 
 - **SuperFluke**, **booleanbyte** original Worley's Caves.
-- **Sxilverr** Worley's Caves Reforged.
 - `FastNoise` by Jordan Peck (MIT)
