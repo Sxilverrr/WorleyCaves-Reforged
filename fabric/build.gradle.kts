@@ -43,6 +43,8 @@ repositories {
     maven("https://maven.fabricmc.net/")
     mavenCentral()
     maven("https://maven.architectury.dev/")
+    maven("https://maven.shedaniel.me/")
+    maven("https://api.modrinth.com/maven") { content { includeGroup("maven.modrinth") } }
 }
 
 dependencies {
@@ -50,6 +52,11 @@ dependencies {
     mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:${common.mod.dep("fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${common.mod.dep("fabric_api")}")
+
+    modImplementation("me.shedaniel.cloth:cloth-config-fabric:${if (stonecutter.eval(minecraft, ">=1.21.1")) "15.0.140" else "11.1.118"}") {
+        exclude(group = "net.fabricmc.fabric-api")
+    }
+    modImplementation("maven.modrinth:modmenu:${if (stonecutter.eval(minecraft, ">=1.21.1")) "11.0.3" else "7.2.2"}")
 
     commonBundle(project(common.path, "namedElements")) { isTransitive = false }
     shadowBundle(project(common.path, "transformProductionFabric")) { isTransitive = false }

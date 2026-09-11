@@ -1,6 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "${forge_range}"
 license = "MIT"
+issueTrackerURL = "https://github.com/SxilverKat/WorleyCaves-Reforged/issues"
 
 [[mods]]
 modId = "${id}"
@@ -9,6 +10,7 @@ displayName = "${name}"
 authors = "Sxilverr, SuperFluke, booleanbyte"
 credits = "Original Worley's Caves by SuperFluke and booleanbyte"
 description = "Cave generation with Worley noise"
+displayURL = "https://www.curseforge.com/minecraft/mc-mods/worleys-caves-reforged"
 logoFile = "icon.png"
 
 

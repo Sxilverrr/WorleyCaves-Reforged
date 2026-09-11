@@ -5,15 +5,24 @@
   "name": "${name}",
   "description": "Cave generation with Worley noise",
   "authors": ["Sxilverr", "SuperFluke", "booleanbyte"],
+  "contact": {
+    "issues": "https://github.com/SxilverKat/WorleyCaves-Reforged/issues",
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/worleys-caves-reforged"
+  },
   "license": "MIT",
   "icon": "icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.sxilverr.worleycaves.fabric.WorleyCavesFabric"]
+    "main": ["com.sxilverr.worleycaves.fabric.WorleyCavesFabric"],
+    "modmenu": ["com.sxilverr.worleycaves.fabric.ModMenuIntegration"]
   },
   "depends": {
     "fabricloader": ">=0.15.0",
     "fabric-api": "*",
     "minecraft": "${minecraft}"
+  },
+  "suggests": {
+    "cloth-config": "*",
+    "modmenu": "*"
   }
 }

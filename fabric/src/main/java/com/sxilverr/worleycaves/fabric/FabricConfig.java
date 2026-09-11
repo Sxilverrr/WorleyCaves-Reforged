@@ -12,54 +12,59 @@ import java.io.BufferedReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 
 public final class FabricConfig {
 
     private static final String FILE_NAME = "worleycaves.json";
 
-    private static final String DEFAULTS = """
+    private static final String TEMPLATE = """
             {
               // Air blocks at or below this y level will generate as lavaBlock. Default: -54
-              "lavaDepth": -54,
+              "lavaDepth": %s,
 
               // Reduces number of caves at surface level, becoming more common until caves
               // generate normally X number of blocks below the surface. Default: 15
-              "easeInDepth": 15,
+              "easeInDepth": %s,
 
               // Block to use when generating large lava lakes below lavaDepth. Default: minecraft:lava
-              "lavaBlock": "minecraft:lava",
+              "lavaBlock": "%s",
 
               // Caves will not attempt to generate above this y level. Default: 128
-              "maxCaveHeight": 128,
+              "maxCaveHeight": %s,
 
               // Caves will not attempt to generate below this y level. Default: -56
-              "minCaveHeight": -56,
+              "minCaveHeight": %s,
 
               // Controls size of caves. Smaller values = larger caves. Default: -0.18
-              "noiseCutoffValue": -0.18,
+              "noiseCutoffValue": %s,
 
               // Controls size of caves at the surface. Smaller values = more caves break
-              // through the surface. Default: -0.081 (45% of noiseCutoffValue)
-              "surfaceCutoffValue": -0.081,
+              // through the surface. Default: -0.081 (45%% of noiseCutoffValue)
+              "surfaceCutoffValue": %s,
 
               // Squishes caves on the Y axis. Lower values = taller caves and more steep drops. Default: 2.0
-              "verticalCompressionMultiplier": 2.0,
+              "verticalCompressionMultiplier": %s,
 
               // Stretches (when < 1.0) or compresses (when > 1.0) cave generation along X and Z axis. Default: 1.0
-              "horizonalCompressionMultiplier": 1.0,
+              "horizonalCompressionMultiplier": %s,
 
               // Controls how much to warp caves. Lower values = straighter caves. Default: 8.0
-              "warpAmplifier": 8.0
+              "warpAmplifier": %s
             }
             """;
 
     private FabricConfig() {
     }
 
+    private static Path path() {
+        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+    }
+
     public static void load() {
-        Path path = FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
+        Path path = path();
         if (!Files.exists(path)) {
-            writeDefaults(path);
+            save();
             return;
         }
 
@@ -89,12 +94,24 @@ public final class FabricConfig {
         }
     }
 
-    private static void writeDefaults(Path path) {
+    public static void save() {
+        Path path = path();
         try {
             Files.createDirectories(path.getParent());
-            Files.write(path, DEFAULTS.getBytes(StandardCharsets.UTF_8));
+            String rendered = String.format(Locale.ROOT, TEMPLATE,
+                    WorleyConfig.lavaDepth,
+                    WorleyConfig.easeInDepth,
+                    WorleyConfig.lavaBlock,
+                    WorleyConfig.maxCaveHeight,
+                    WorleyConfig.minCaveHeight,
+                    WorleyConfig.noiseCutoffValue,
+                    WorleyConfig.surfaceCutoffValue,
+                    WorleyConfig.verticalCompressionMultiplier,
+                    WorleyConfig.horizonalCompressionMultiplier,
+                    WorleyConfig.warpAmplifier);
+            Files.write(path, rendered.getBytes(StandardCharsets.UTF_8));
         } catch (Exception exception) {
-            WorleyCaves.LOGGER.error("Failed to write default {}", FILE_NAME, exception);
+            WorleyCaves.LOGGER.error("Failed to write {}", FILE_NAME, exception);
         }
     }
 
