@@ -10,7 +10,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
@@ -148,8 +147,13 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
             return false;
         }
 
+        //? if >=1.21.2 {
+        /*int chunkMinY = Math.max(minCaveHeight, chunk.getMinY());
+        int chunkMaxY = Math.min(maxCaveHeight, chunk.getMaxY());
+        *///?} else {
         int chunkMinY = Math.max(minCaveHeight, chunk.getMinBuildHeight());
         int chunkMaxY = Math.min(maxCaveHeight, chunk.getMaxBuildHeight() - 1);
+        //?}
         if (chunkMaxY <= chunkMinY) {
             return false;
         }
@@ -329,7 +333,7 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
     private float cutoffAt(int depth, int localY) {
         float adjustedNoiseCutoff = noiseCutoff;
         if (depth < easeInDepth) {
-            adjustedNoiseCutoff = (float) Mth.clampedLerp(noiseCutoff, surfaceCutoff,
+            adjustedNoiseCutoff = (float) clampedLerp(noiseCutoff, surfaceCutoff,
                     (easeInDepth - (float) depth) / easeInDepth);
         }
         if (localY < (minCaveHeight + 5)) {
@@ -362,26 +366,44 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
         }
 
         if (localY <= lavaDepth) {
-            chunk.setBlockState(pos, lavaBlock, false);
+            setBlock(chunk, pos, lavaBlock);
             markCarved(carvingMask, localX, localY, localZ);
             return;
         }
 
-        chunk.setBlockState(pos, AIR, false);
+        setBlock(chunk, pos, AIR);
         markCarved(carvingMask, localX, localY, localZ);
 
         if (localY == columnFloorY) {
             BlockState floorBlock = chunk.getBlockState(scratch.set(worldX, localY - 1, worldZ));
             if (!floorBlock.isAir() && canCarveThrough(floorBlock)) {
-                chunk.setBlockState(scratch, currentBlock, false);
+                setBlock(chunk, scratch, currentBlock);
             }
         }
 
         if (aboveBlock.is(Blocks.SAND)) {
-            chunk.setBlockState(scratch.set(worldX, localY + 1, worldZ), SANDSTONE, false);
+            setBlock(chunk, scratch.set(worldX, localY + 1, worldZ), SANDSTONE);
         } else if (aboveBlock.is(Blocks.RED_SAND)) {
-            chunk.setBlockState(scratch.set(worldX, localY + 1, worldZ), RED_SANDSTONE, false);
+            setBlock(chunk, scratch.set(worldX, localY + 1, worldZ), RED_SANDSTONE);
         }
+    }
+
+    private static double clampedLerp(double start, double end, double delta) {
+        if (delta < 0.0D) {
+            return start;
+        }
+        if (delta > 1.0D) {
+            return end;
+        }
+        return start + delta * (end - start);
+    }
+
+    private static void setBlock(ChunkAccess chunk, BlockPos pos, BlockState state) {
+        //? if >=1.21.5 {
+        /*chunk.setBlockState(pos, state);
+        *///?} else {
+        chunk.setBlockState(pos, state, false);
+        //?}
     }
 
     private static void markCarved(CarvingMask carvingMask, int localX, int localY, int localZ) {

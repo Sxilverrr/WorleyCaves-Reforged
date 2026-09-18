@@ -1,6 +1,7 @@
 package com.sxilverr.worleycaves.world;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.util.valueproviders.ConstantFloat;
 import net.minecraft.world.level.levelgen.VerticalAnchor;
 import net.minecraft.world.level.levelgen.carver.CarverConfiguration;
@@ -15,7 +16,7 @@ import java.util.List;
 
 public class WorleyCarverConfiguration extends CarverConfiguration {
 
-    public static final Codec<WorleyCarverConfiguration> CODEC = Codec.unit(WorleyCarverConfiguration::new);
+    public static final Codec<WorleyCarverConfiguration> CODEC = MapCodec.unit(WorleyCarverConfiguration::new).codec();
 
     public WorleyCarverConfiguration() {
         //? if >=1.19 {

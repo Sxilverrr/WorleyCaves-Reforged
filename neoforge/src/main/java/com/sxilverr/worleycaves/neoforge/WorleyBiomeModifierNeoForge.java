@@ -8,12 +8,14 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryFixedCodec;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.neoforged.neoforge.common.world.BiomeModifier;
 import net.neoforged.neoforge.common.world.ModifiableBiomeInfo;
 
 import java.util.List;
+//? if <1.21.2 {
+import net.minecraft.world.level.levelgen.GenerationStep;
+//?}
 
 public record WorleyBiomeModifierNeoForge(HolderSet<Biome> biomes, Holder<ConfiguredWorldCarver<?>> carver)
         implements BiomeModifier {
@@ -29,11 +31,19 @@ public record WorleyBiomeModifierNeoForge(HolderSet<Biome> biomes, Holder<Config
         if (!biomes.contains(biome)) {
             return;
         }
+        //? if >=1.21.2 {
+        /*List<Holder<ConfiguredWorldCarver<?>>> carvers = builder.getGenerationSettings().getCarvers();
+        *///?} else {
         List<Holder<ConfiguredWorldCarver<?>>> carvers =
                 builder.getGenerationSettings().getCarvers(GenerationStep.Carving.AIR);
+        //?}
         if (phase == Phase.REMOVE) {
             carvers.removeIf(holder -> holder.unwrapKey()
+                    //? if >=1.21.11 {
+                    /*.map(key -> WorleyCarvers.isVanillaCave(key.identifier()))
+                    *///?} else {
                     .map(key -> WorleyCarvers.isVanillaCave(key.location()))
+                    //?}
                     .orElse(false));
         } else if (phase == Phase.ADD && !carvers.contains(carver)) {
             carvers.add(carver);
