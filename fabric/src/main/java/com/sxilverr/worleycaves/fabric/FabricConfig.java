@@ -1,15 +1,11 @@
 package com.sxilverr.worleycaves.fabric;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
 import com.sxilverr.worleycaves.WorleyCaves;
 import com.sxilverr.worleycaves.config.WorleyConfig;
 import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.BufferedReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -68,15 +64,8 @@ public final class FabricConfig {
             return;
         }
 
-        try (BufferedReader buffered = Files.newBufferedReader(path, StandardCharsets.UTF_8);
-             JsonReader reader = new JsonReader(buffered)) {
-            reader.setLenient(true);
-            JsonElement parsed = JsonParser.parseReader(reader);
-            if (!parsed.isJsonObject()) {
-                WorleyCaves.LOGGER.warn("{} is not a JSON object, using defaults", FILE_NAME);
-                return;
-            }
-            JsonObject root = parsed.getAsJsonObject();
+        try {
+            JsonObject root = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
             WorleyConfig.lavaDepth = asInt(root, "lavaDepth", WorleyConfig.DEFAULT_LAVA_DEPTH);
             WorleyConfig.easeInDepth = asInt(root, "easeInDepth", WorleyConfig.DEFAULT_EASE_IN_DEPTH);
             WorleyConfig.lavaBlock = asString(root, "lavaBlock", WorleyConfig.DEFAULT_LAVA_BLOCK);
@@ -84,10 +73,8 @@ public final class FabricConfig {
             WorleyConfig.minCaveHeight = asInt(root, "minCaveHeight", WorleyConfig.DEFAULT_MIN_CAVE_HEIGHT);
             WorleyConfig.noiseCutoffValue = asDouble(root, "noiseCutoffValue", WorleyConfig.DEFAULT_NOISE_CUTOFF);
             WorleyConfig.surfaceCutoffValue = asDouble(root, "surfaceCutoffValue", WorleyConfig.DEFAULT_SURFACE_CUTOFF);
-            WorleyConfig.verticalCompressionMultiplier =
-                    asDouble(root, "verticalCompressionMultiplier", WorleyConfig.DEFAULT_VERTICAL_COMPRESSION);
-            WorleyConfig.horizonalCompressionMultiplier =
-                    asDouble(root, "horizonalCompressionMultiplier", WorleyConfig.DEFAULT_HORIZONTAL_COMPRESSION);
+            WorleyConfig.verticalCompressionMultiplier = asDouble(root, "verticalCompressionMultiplier", WorleyConfig.DEFAULT_VERTICAL_COMPRESSION);
+            WorleyConfig.horizonalCompressionMultiplier = asDouble(root, "horizonalCompressionMultiplier", WorleyConfig.DEFAULT_HORIZONTAL_COMPRESSION);
             WorleyConfig.warpAmplifier = asDouble(root, "warpAmplifier", WorleyConfig.DEFAULT_WARP_AMPLIFIER);
         } catch (Exception exception) {
             WorleyCaves.LOGGER.error("Failed to read {}, using defaults", FILE_NAME, exception);
@@ -95,10 +82,9 @@ public final class FabricConfig {
     }
 
     public static void save() {
-        Path path = path();
         try {
-            Files.createDirectories(path.getParent());
-            String rendered = String.format(Locale.ROOT, TEMPLATE,
+            Files.createDirectories(path().getParent());
+            Files.writeString(path(), String.format(Locale.ROOT, TEMPLATE,
                     WorleyConfig.lavaDepth,
                     WorleyConfig.easeInDepth,
                     WorleyConfig.lavaBlock,
@@ -108,25 +94,21 @@ public final class FabricConfig {
                     WorleyConfig.surfaceCutoffValue,
                     WorleyConfig.verticalCompressionMultiplier,
                     WorleyConfig.horizonalCompressionMultiplier,
-                    WorleyConfig.warpAmplifier);
-            Files.write(path, rendered.getBytes(StandardCharsets.UTF_8));
+                    WorleyConfig.warpAmplifier));
         } catch (Exception exception) {
             WorleyCaves.LOGGER.error("Failed to write {}", FILE_NAME, exception);
         }
     }
 
     private static int asInt(JsonObject root, String key, int fallback) {
-        JsonElement element = root.get(key);
-        return element != null && element.isJsonPrimitive() ? element.getAsInt() : fallback;
+        return root.has(key) ? root.get(key).getAsInt() : fallback;
     }
 
     private static double asDouble(JsonObject root, String key, double fallback) {
-        JsonElement element = root.get(key);
-        return element != null && element.isJsonPrimitive() ? element.getAsDouble() : fallback;
+        return root.has(key) ? root.get(key).getAsDouble() : fallback;
     }
 
     private static String asString(JsonObject root, String key, String fallback) {
-        JsonElement element = root.get(key);
-        return element != null && element.isJsonPrimitive() ? element.getAsString() : fallback;
+        return root.has(key) ? root.get(key).getAsString() : fallback;
     }
 }

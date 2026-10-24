@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "*"
 license = "MIT"
-issueTrackerURL = "https://github.com/SxilverKat/WorleyCaves-Reforged/issues"
+issueTrackerURL = "https://github.com/Sxilverrr/WorleyCaves-Reforged/issues"
 
 [[mods]]
 modId = "${id}"

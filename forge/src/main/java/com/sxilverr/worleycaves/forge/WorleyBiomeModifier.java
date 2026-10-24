@@ -41,21 +41,13 @@ public record WorleyBiomeModifier(HolderSet<Biome> biomes, Holder<ConfiguredWorl
         if (!biomes.contains(biome)) {
             return;
         }
+        List<Holder<ConfiguredWorldCarver<?>>> carvers =
+                builder.getGenerationSettings().getCarvers(GenerationStep.Carving.AIR);
         if (phase == Phase.REMOVE) {
-            removeVanillaCaves(builder.getGenerationSettings().getCarvers(GenerationStep.Carving.AIR));
-        } else if (phase == Phase.ADD) {
-            List<Holder<ConfiguredWorldCarver<?>>> air =
-                    builder.getGenerationSettings().getCarvers(GenerationStep.Carving.AIR);
-            if (!air.contains(carver)) {
-                air.add(carver);
-            }
+            carvers.removeIf(WorleyCarvers::isVanillaCave);
+        } else if (phase == Phase.ADD && !carvers.contains(carver)) {
+            carvers.add(carver);
         }
-    }
-
-    private static void removeVanillaCaves(List<Holder<ConfiguredWorldCarver<?>>> carvers) {
-        carvers.removeIf(holder -> holder.unwrapKey()
-                .map(key -> WorleyCarvers.isVanillaCave(key.location()))
-                .orElse(false));
     }
 
     @Override

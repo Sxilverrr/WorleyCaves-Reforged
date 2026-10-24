@@ -92,8 +92,7 @@ tasks.processResources {
         "version" to mod.version,
         "minecraft" to common.mod.prop("mc_dep_forgelike"),
         "neoforge_range" to common.mod.prop("neoforge_range"),
-        "pack_format" to common.mod.prop("pack_format"),
-        "data_pack_format" to common.mod.prop("data_pack_format")
+        "pack_format" to common.mod.prop("pack_format")
     )
 }
 

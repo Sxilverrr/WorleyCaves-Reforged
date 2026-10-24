@@ -6,6 +6,10 @@ plugins {
 }
 stonecutter active "1.20.1" /* [SC] DO NOT EDIT */
 
+stonecutter parameters {
+    replacement(eval(metadata.version, ">=1.21.11"), "ResourceLocation", "Identifier")
+}
+
 stonecutter registerChiseled tasks.register("chiseledBuild", stonecutter.chiseled) {
     group = "project"
     ofTask("buildAndCollect")

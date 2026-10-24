@@ -100,8 +100,7 @@ tasks.processResources {
         "name" to mod.name,
         "version" to mod.version,
         "minecraft" to common.mod.prop("mc_dep_fabric"),
-        "pack_format" to common.mod.prop("pack_format"),
-        "data_pack_format" to common.mod.prop("data_pack_format")
+        "pack_format" to common.mod.prop("pack_format")
     )
 }
 

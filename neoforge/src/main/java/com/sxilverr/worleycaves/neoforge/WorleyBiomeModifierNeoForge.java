@@ -38,13 +38,7 @@ public record WorleyBiomeModifierNeoForge(HolderSet<Biome> biomes, Holder<Config
                 builder.getGenerationSettings().getCarvers(GenerationStep.Carving.AIR);
         //?}
         if (phase == Phase.REMOVE) {
-            carvers.removeIf(holder -> holder.unwrapKey()
-                    //? if >=1.21.11 {
-                    /*.map(key -> WorleyCarvers.isVanillaCave(key.identifier()))
-                    *///?} else {
-                    .map(key -> WorleyCarvers.isVanillaCave(key.location()))
-                    //?}
-                    .orElse(false));
+            carvers.removeIf(WorleyCarvers::isVanillaCave);
         } else if (phase == Phase.ADD && !carvers.contains(carver)) {
             carvers.add(carver);
         }

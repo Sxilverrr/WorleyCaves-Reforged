@@ -1,15 +1,13 @@
 package com.sxilverr.worleycaves.world;
 
-import com.mojang.serialization.Codec;
 import com.sxilverr.worleycaves.WorleyCaves;
 import com.sxilverr.worleycaves.config.WorleyConfig;
 import com.sxilverr.worleycaves.noise.FastNoise;
-import com.sxilverr.worleycaves.noise.WorleyUtil;
-import com.sxilverr.worleycaves.util.BlockUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
@@ -29,6 +27,12 @@ import net.minecraft.util.RandomSource;
 //?} else {
 /*import java.util.Random;*/
 //?}
+//? if >=1.20 {
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+//?} else {
+/*import net.minecraft.core.Registry;*/
+//?}
 
 public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
 
@@ -43,10 +47,10 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
     private static final BlockState SANDSTONE = Blocks.SANDSTONE.defaultBlockState();
     private static final BlockState RED_SANDSTONE = Blocks.RED_SANDSTONE.defaultBlockState();
 
-    private static final TagKey<Block> CARVABLE = BlockUtil.blockTag(WorleyCaves.id("carvable"));
-    private static final TagKey<Block> FORGE_STONE = BlockUtil.blockTag(WorleyCaves.rl("forge", "stone"));
-    private static final TagKey<Block> COMMON_STONE = BlockUtil.blockTag(WorleyCaves.rl("c", "stone"));
-    private static final TagKey<Block> TERRACOTTA = BlockUtil.blockTag(WorleyCaves.rl("minecraft", "terracotta"));
+    private static final TagKey<Block> CARVABLE = blockTag("worleycaves:carvable");
+    private static final TagKey<Block> FORGE_STONE = blockTag("forge:stone");
+    private static final TagKey<Block> COMMON_STONE = blockTag("c:stone");
+    private static final TagKey<Block> TERRACOTTA = blockTag("minecraft:terracotta");
 
     private static final Set<Block> EXTRA_CARVABLE = Set.of(
             Blocks.GRAVEL,
@@ -64,12 +68,10 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
             Blocks.ICE
     );
 
-    private WorleyUtil worleyF1divF3;
-    private FastNoise displacementNoisePerlin;
     private volatile boolean initialised;
     private long seed;
 
-    private BlockState lavaBlock = Blocks.LAVA.defaultBlockState();
+    private BlockState lavaBlock;
     private int maxCaveHeight;
     private int minCaveHeight;
     private int lavaDepth;
@@ -80,21 +82,14 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
     private float yCompression;
     private float xzCompression;
 
-    public WorleyCarver(Codec<WorleyCarverConfiguration> codec) {
-        super(codec);
+    WorleyCarver() {
+        super(WorleyCarverConfiguration.CODEC);
     }
 
     public void init(long worldSeed) {
         if (initialised && seed == worldSeed) {
             return;
         }
-        WorleyUtil worley = new WorleyUtil((int) worldSeed);
-        worley.SetFrequency(WORLEY_FREQUENCY);
-
-        FastNoise displacement = new FastNoise((int) worldSeed);
-        displacement.SetNoiseType(FastNoise.NoiseType.Perlin);
-        displacement.SetFrequency(DISPLACEMENT_FREQUENCY);
-
         maxCaveHeight = WorleyConfig.maxCaveHeight;
         minCaveHeight = WorleyConfig.minCaveHeight;
         lavaDepth = WorleyConfig.lavaDepth;
@@ -104,10 +99,7 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
         easeInDepth = (float) WorleyConfig.easeInDepth;
         yCompression = (float) WorleyConfig.verticalCompressionMultiplier;
         xzCompression = (float) WorleyConfig.horizonalCompressionMultiplier;
-        lavaBlock = BlockUtil.stateFromString(WorleyConfig.lavaBlock, Blocks.LAVA.defaultBlockState());
-
-        worleyF1divF3 = worley;
-        displacementNoisePerlin = displacement;
+        lavaBlock = blockOrLava(WorleyConfig.lavaBlock);
         seed = worldSeed;
         initialised = true;
     }
@@ -164,12 +156,9 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
         for (int localX = 0; localX < 16; localX++) {
             for (int localZ = 0; localZ < 16; localZ++) {
                 int index = (localX << 4) | localZ;
-                int surface = chunk.getHeight(Heightmap.Types.WORLD_SURFACE_WG, localX, localZ);
-                surfaceY[index] = surface;
+                surfaceY[index] = chunk.getHeight(Heightmap.Types.WORLD_SURFACE_WG, localX, localZ);
                 floorY[index] = chunk.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, localX, localZ) - 1;
-                if (surface > chunkSurfaceMax) {
-                    chunkSurfaceMax = surface;
-                }
+                chunkSurfaceMax = Math.max(chunkSurfaceMax, surfaceY[index]);
             }
         }
         if (chunkSurfaceMax < chunkMinY) {
@@ -183,7 +172,7 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
             return false;
         }
 
-        boolean[] hasCaves = new boolean[SAMPLE_GRID * SAMPLE_GRID];
+        boolean[][] hasCaves = new boolean[SAMPLE_GRID][SAMPLE_GRID];
         float[][][] samples = sampleNoise(originPos.x, originPos.z, baseY, sampleCount,
                 chunkSurfaceMax, chunkMinY, chunkMaxY, hasCaves);
 
@@ -193,14 +182,18 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
     }
 
     private float[][][] sampleNoise(int chunkX, int chunkZ, int baseY, int sampleCount, int surfaceMaxY,
-                                    int chunkMinY, int chunkMaxY, boolean[] hasCaves) {
+                                    int chunkMinY, int chunkMaxY, boolean[][] hasCaves) {
         float[][][] samples = new float[SAMPLE_GRID][sampleCount][SAMPLE_GRID];
+        int noiseSeed = (int) seed;
 
         for (int x = 0; x < SAMPLE_GRID; x++) {
             int realX = x * 4 + chunkX * 16;
+            float warpX = realX * DISPLACEMENT_FREQUENCY;
             for (int z = 0; z < SAMPLE_GRID; z++) {
                 int realZ = z * 4 + chunkZ * 16;
-                boolean columnHasCaveFlag = false;
+                float xWarp = FastNoise.perlin(noiseSeed, warpX, realZ * DISPLACEMENT_FREQUENCY);
+                float yWarp = FastNoise.perlin(noiseSeed, warpX, (realZ + 67.0F) * DISPLACEMENT_FREQUENCY);
+                float zWarp = FastNoise.perlin(noiseSeed, warpX, (realZ + 149.0F) * DISPLACEMENT_FREQUENCY);
 
                 for (int i = sampleCount - 1; i >= 0; i--) {
                     int realY = baseY + i * SAMPLE_STEP;
@@ -212,18 +205,14 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
                     float dispAmp = (float) (warpAmplifier
                             * ((LEGACY_MAX_HEIGHT - realY / 2.0D) / (LEGACY_MAX_HEIGHT * 0.85D)));
 
-                    float xDisp = displacementNoisePerlin.GetNoise(realX, realZ) * dispAmp;
-                    float yDisp = displacementNoisePerlin.GetNoise(realX, realZ + 67.0F) * dispAmp;
-                    float zDisp = displacementNoisePerlin.GetNoise(realX, realZ + 149.0F) * dispAmp;
-
-                    float noise = worleyF1divF3.SingleCellular3Edge(
-                            realX * xzCompression + xDisp,
-                            realY * yCompression + yDisp,
-                            realZ * xzCompression + zDisp);
+                    float noise = FastNoise.cellularEdge(noiseSeed,
+                            (realX * xzCompression + xWarp * dispAmp) * WORLEY_FREQUENCY,
+                            (realY * yCompression + yWarp * dispAmp) * WORLEY_FREQUENCY,
+                            (realZ * xzCompression + zWarp * dispAmp) * WORLEY_FREQUENCY);
                     samples[x][i][z] = noise;
 
                     if (noise > noiseCutoff) {
-                        columnHasCaveFlag = true;
+                        hasCaves[x][z] = true;
                         if (x > 0) {
                             samples[x - 1][i][z] = (noise * 0.2F) + (samples[x - 1][i][z] * 0.8F);
                         }
@@ -244,17 +233,14 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
                         }
                     }
                 }
-                hasCaves[x * SAMPLE_GRID + z] = columnHasCaveFlag;
             }
         }
         return samples;
     }
 
     private void carveSamples(ChunkAccess chunk, ChunkPos originPos, CarvingMask carvingMask,
-                              float[][][] samples, boolean[] hasCaves, int baseY, int sampleCount,
+                              float[][][] samples, boolean[][] hasCaves, int baseY, int sampleCount,
                               int chunkMinY, int chunkMaxY, int[] surfaceY, int[] floorY) {
-        float oneQuarter = 0.25F;
-        float oneHalf = 0.5F;
         int originX = originPos.getMinBlockX();
         int originZ = originPos.getMinBlockZ();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -262,49 +248,36 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
 
         for (int x = 0; x < 4; x++) {
             for (int z = 0; z < 4; z++) {
-                if (!hasCaves[x * SAMPLE_GRID + z]
-                        && !hasCaves[(x + 1) * SAMPLE_GRID + z]
-                        && !hasCaves[x * SAMPLE_GRID + z + 1]
-                        && !hasCaves[(x + 1) * SAMPLE_GRID + z + 1]) {
+                if (!hasCaves[x][z] && !hasCaves[x + 1][z] && !hasCaves[x][z + 1] && !hasCaves[x + 1][z + 1]) {
                     continue;
                 }
 
                 for (int i = sampleCount - 2; i >= 0; i--) {
-                    float x0y0z0 = samples[x][i][z];
-                    float x0y0z1 = samples[x][i][z + 1];
-                    float x1y0z0 = samples[x + 1][i][z];
-                    float x1y0z1 = samples[x + 1][i][z + 1];
-                    float x0y1z0 = samples[x][i + 1][z];
-                    float x0y1z1 = samples[x][i + 1][z + 1];
-                    float x1y1z0 = samples[x + 1][i + 1][z];
-                    float x1y1z1 = samples[x + 1][i + 1][z + 1];
+                    float noiseStartX0 = samples[x][i][z];
+                    float noiseStartX1 = samples[x][i][z + 1];
+                    float noiseEndX0 = samples[x + 1][i][z];
+                    float noiseEndX1 = samples[x + 1][i][z + 1];
 
-                    float noiseStepY00 = (x0y1z0 - x0y0z0) * -oneHalf;
-                    float noiseStepY01 = (x0y1z1 - x0y0z1) * -oneHalf;
-                    float noiseStepY10 = (x1y1z0 - x1y0z0) * -oneHalf;
-                    float noiseStepY11 = (x1y1z1 - x1y0z1) * -oneHalf;
-
-                    float noiseStartX0 = x0y0z0;
-                    float noiseStartX1 = x0y0z1;
-                    float noiseEndX0 = x1y0z0;
-                    float noiseEndX1 = x1y0z1;
+                    float noiseStepY00 = (samples[x][i + 1][z] - noiseStartX0) * -0.5F;
+                    float noiseStepY01 = (samples[x][i + 1][z + 1] - noiseStartX1) * -0.5F;
+                    float noiseStepY10 = (samples[x + 1][i + 1][z] - noiseEndX0) * -0.5F;
+                    float noiseStepY11 = (samples[x + 1][i + 1][z + 1] - noiseEndX1) * -0.5F;
 
                     for (int suby = 1; suby >= 0; suby--) {
                         int localY = baseY + i * SAMPLE_STEP + suby;
-                        float noiseStartZ = noiseStartX0;
-                        float noiseEndZ = noiseStartX1;
+                        if (localY >= chunkMinY && localY <= chunkMaxY) {
+                            float noiseStartZ = noiseStartX0;
+                            float noiseEndZ = noiseStartX1;
+                            float noiseStepX0 = (noiseEndX0 - noiseStartX0) * 0.25F;
+                            float noiseStepX1 = (noiseEndX1 - noiseStartX1) * 0.25F;
 
-                        float noiseStepX0 = (noiseEndX0 - noiseStartX0) * oneQuarter;
-                        float noiseStepX1 = (noiseEndX1 - noiseStartX1) * oneQuarter;
+                            for (int subx = 0; subx < 4; subx++) {
+                                int localX = subx + x * 4;
+                                float noiseStepZ = (noiseEndZ - noiseStartZ) * 0.25F;
+                                float noiseVal = noiseStartZ;
 
-                        for (int subx = 0; subx < 4; subx++) {
-                            int localX = subx + x * 4;
-                            float noiseStepZ = (noiseEndZ - noiseStartZ) * oneQuarter;
-                            float noiseVal = noiseStartZ;
-
-                            for (int subz = 0; subz < 4; subz++) {
-                                int localZ = subz + z * 4;
-                                if (localY >= chunkMinY && localY <= chunkMaxY) {
+                                for (int subz = 0; subz < 4; subz++) {
+                                    int localZ = subz + z * 4;
                                     int column = (localX << 4) | localZ;
                                     int depth = surfaceY[column] - localY;
                                     if (depth > 0 && noiseVal > cutoffAt(depth, localY)) {
@@ -312,12 +285,12 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
                                                 originX + localX, localY, originZ + localZ,
                                                 localX, localZ, depth, floorY[column]);
                                     }
+                                    noiseVal += noiseStepZ;
                                 }
-                                noiseVal += noiseStepZ;
-                            }
 
-                            noiseStartZ += noiseStepX0;
-                            noiseEndZ += noiseStepX1;
+                                noiseStartZ += noiseStepX0;
+                                noiseEndZ += noiseStepX1;
+                            }
                         }
 
                         noiseStartX0 += noiseStepY00;
@@ -331,15 +304,10 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
     }
 
     private float cutoffAt(int depth, int localY) {
-        float adjustedNoiseCutoff = noiseCutoff;
-        if (depth < easeInDepth) {
-            adjustedNoiseCutoff = (float) clampedLerp(noiseCutoff, surfaceCutoff,
-                    (easeInDepth - (float) depth) / easeInDepth);
-        }
-        if (localY < (minCaveHeight + 5)) {
-            adjustedNoiseCutoff += ((minCaveHeight + 5) - localY) * 0.05F;
-        }
-        return adjustedNoiseCutoff;
+        float cutoff = depth < easeInDepth
+                ? (float) Mth.lerp((easeInDepth - (float) depth) / easeInDepth, noiseCutoff, surfaceCutoff)
+                : noiseCutoff;
+        return localY < minCaveHeight + 5 ? cutoff + (minCaveHeight + 5 - localY) * 0.05F : cutoff;
     }
 
     private void tryCarve(ChunkAccess chunk, BlockPos.MutableBlockPos pos, BlockPos.MutableBlockPos scratch,
@@ -365,14 +333,12 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
             return;
         }
 
+        carvingMask.set(localX, localY, localZ);
         if (localY <= lavaDepth) {
             setBlock(chunk, pos, lavaBlock);
-            markCarved(carvingMask, localX, localY, localZ);
             return;
         }
-
         setBlock(chunk, pos, AIR);
-        markCarved(carvingMask, localX, localY, localZ);
 
         if (localY == columnFloorY) {
             BlockState floorBlock = chunk.getBlockState(scratch.set(worldX, localY - 1, worldZ));
@@ -388,28 +354,12 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
         }
     }
 
-    private static double clampedLerp(double start, double end, double delta) {
-        if (delta < 0.0D) {
-            return start;
-        }
-        if (delta > 1.0D) {
-            return end;
-        }
-        return start + delta * (end - start);
-    }
-
     private static void setBlock(ChunkAccess chunk, BlockPos pos, BlockState state) {
         //? if >=1.21.5 {
         /*chunk.setBlockState(pos, state);
         *///?} else {
         chunk.setBlockState(pos, state, false);
         //?}
-    }
-
-    private static void markCarved(CarvingMask carvingMask, int localX, int localY, int localZ) {
-        if (carvingMask != null) {
-            carvingMask.set(localX, localY, localZ);
-        }
     }
 
     private static boolean isFluid(BlockState state) {
@@ -434,5 +384,30 @@ public class WorleyCarver extends WorldCarver<WorleyCarverConfiguration> {
                 || state.is(FORGE_STONE)
                 || state.is(COMMON_STONE)
                 || EXTRA_CARVABLE.contains(state.getBlock());
+    }
+
+    private static TagKey<Block> blockTag(String id) {
+        //? if >=1.20 {
+        return TagKey.create(Registries.BLOCK, WorleyCaves.id(id));
+        //?} else {
+        /*return TagKey.create(Registry.BLOCK_REGISTRY, WorleyCaves.id(id));*/
+        //?}
+    }
+
+    private static BlockState blockOrLava(String name) {
+        var id = WorleyCaves.id(name);
+        //? if >=1.21.2 {
+        /*Block block = id == null ? Blocks.AIR : BuiltInRegistries.BLOCK.getValue(id);
+        *///?} elif >=1.20 {
+        Block block = id == null ? Blocks.AIR : BuiltInRegistries.BLOCK.get(id);
+        //?} else {
+        /*Block block = id == null ? Blocks.AIR : Registry.BLOCK.get(id);*/
+        //?}
+        if (block != Blocks.AIR) {
+            return block.defaultBlockState();
+        }
+        BlockState fallback = Blocks.LAVA.defaultBlockState();
+        WorleyCaves.LOGGER.warn("Unable to find block '{}', falling back to {}", name, fallback);
+        return fallback;
     }
 }

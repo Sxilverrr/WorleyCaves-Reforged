@@ -16,7 +16,7 @@ import java.util.List;
 
 public class WorleyCarverConfiguration extends CarverConfiguration {
 
-    public static final Codec<WorleyCarverConfiguration> CODEC = MapCodec.unit(WorleyCarverConfiguration::new).codec();
+    static final Codec<WorleyCarverConfiguration> CODEC = MapCodec.unit(WorleyCarverConfiguration::new).codec();
 
     public WorleyCarverConfiguration() {
         //? if >=1.19 {
